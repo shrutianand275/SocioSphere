@@ -13,6 +13,8 @@ import MyComplaints from './pages/resident/MyComplaints';
 import ManageNotices from './pages/admin/ManageNotices';
 import ResidentNotices from './pages/resident/ResidentNotices';
 import ResidentDashboard from './pages/resident/Residentdashboard';
+import ManageVoting from './pages/admin/ManageVoting';
+import ResidentVoting from './pages/resident/residentVoting';
 
 import ProtectedRoute from './components/common/ProtectedRoute';
 
@@ -104,6 +106,28 @@ function App() {
                 element={
                     <ProtectedRoute allowedRole="resident">
                         <ResidentNotices />
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* ADMIN VOTING */}
+
+            <Route
+                path="/admin/voting"
+                element={
+                    <ProtectedRoute allowedRole="admin">
+                        <ManageVoting />
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* RESIDENT VOTING */}
+
+            <Route
+                path="/resident/voting"
+                element={
+                    <ProtectedRoute allowedRole="resident">
+                        <ResidentVoting />
                     </ProtectedRoute>
                 }
             />

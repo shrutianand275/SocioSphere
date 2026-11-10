@@ -7,7 +7,8 @@ import {
     FaBars,
     FaTimes,
     FaClipboardList,
-    FaBullhorn
+    FaBullhorn,
+    FaVoteYea
 } from 'react-icons/fa';
 
 import { useState } from 'react';
@@ -42,6 +43,11 @@ const DashboardLayout = ({ children }) => {
             title: 'Manage Notices',
             path: '/admin/notices',
             icon: <FaBullhorn />
+        },
+        {
+            title: 'Voting & Polls',
+            path: '/admin/voting',
+            icon: <FaVoteYea />
         }
     ];
 

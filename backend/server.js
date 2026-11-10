@@ -36,6 +36,9 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 // Complaint Routes
 app.use('/api/complaints', require('./routes/complaintRoutes'));
 app.use('/api/notices', require('./routes/noticeRoutes'));
+app.use('/api/voting', require('./routes/votingRoutes'));
+
+
 // Home API
 app.get('/', (req, res) => {
     res.status(200).json({
