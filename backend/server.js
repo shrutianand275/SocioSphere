@@ -37,7 +37,9 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/complaints', require('./routes/complaintRoutes'));
 app.use('/api/notices', require('./routes/noticeRoutes'));
 app.use('/api/voting', require('./routes/votingRoutes'));
-
+app.use('/api/expenses', require('./routes/expenseRoutes'));
+app.use('/api/reports', require('./routes/reportRoutes'));
+app.use('/api/profile', require('./routes/profileRoutes'));
 
 // Home API
 app.get('/', (req, res) => {

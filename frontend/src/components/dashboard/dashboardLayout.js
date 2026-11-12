@@ -8,7 +8,10 @@ import {
     FaTimes,
     FaClipboardList,
     FaBullhorn,
-    FaVoteYea
+    FaVoteYea,
+    FaWallet,
+    FaChartLine,
+    FaUserCircle
 } from 'react-icons/fa';
 
 import { useState } from 'react';
@@ -48,6 +51,21 @@ const DashboardLayout = ({ children }) => {
             title: 'Voting & Polls',
             path: '/admin/voting',
             icon: <FaVoteYea />
+        },
+        {
+            title: 'Expense Management',
+            path: '/admin/expenses',
+            icon: <FaWallet />
+        },
+        {
+            title: 'Reports & Analytics',
+            path: '/admin/reports',
+            icon: <FaChartLine />
+        },
+        {
+            title: 'My Profile',
+            path: '/admin/profile',
+            icon: <FaUserCircle />
         }
     ];
 

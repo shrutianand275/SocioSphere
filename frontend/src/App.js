@@ -15,6 +15,11 @@ import ResidentNotices from './pages/resident/ResidentNotices';
 import ResidentDashboard from './pages/resident/Residentdashboard';
 import ManageVoting from './pages/admin/ManageVoting';
 import ResidentVoting from './pages/resident/residentVoting';
+import ManageExpenses from './pages/admin/ManageExpenses';
+import ResidentExpenses from './pages/resident/ResidentExpenses';
+import ReportsAnalytics from './pages/admin/ReportAnalytics';
+import AdminMyProfile from './pages/admin/MyProfile';
+import ResidentMyProfile from './pages/resident/MyProfile';
 
 import ProtectedRoute from './components/common/ProtectedRoute';
 
@@ -128,6 +133,51 @@ function App() {
                 element={
                     <ProtectedRoute allowedRole="resident">
                         <ResidentVoting />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/admin/expenses"
+                element={
+                    <ProtectedRoute allowedRole="admin">
+                        <ManageExpenses />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/resident/expenses"
+                element={
+                    <ProtectedRoute allowedRole="resident">
+                        <ResidentExpenses />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/admin/reports"
+                element={
+                    <ProtectedRoute allowedRole="admin">
+                        <ReportsAnalytics />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/admin/profile"
+                element={
+                    <ProtectedRoute allowedRole="admin">
+                        <AdminMyProfile />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/resident/profile"
+                element={
+                    <ProtectedRoute allowedRole="resident">
+                        <ResidentMyProfile />
                     </ProtectedRoute>
                 }
             />

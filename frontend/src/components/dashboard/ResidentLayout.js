@@ -11,7 +11,9 @@ import {
     FaVoteYea,
     FaSignOutAlt,
     FaBars,
-    FaTimes
+    FaTimes,
+    FaWallet,
+    FaUserCircle
 } from 'react-icons/fa';
 
 import { useAuth } from '../../context/authContext';
@@ -50,9 +52,14 @@ const ResidentLayout = ({ children }) => {
             icon: <FaVoteYea />
         },
         {
+            title: 'Society Expenses',
+            path: '/resident/expenses',
+            icon: <FaWallet />
+        },
+        {
             title: 'My Profile',
             path: '/resident/profile',
-            icon: <FaUser />
+            icon: <FaUserCircle />
         }
     ];
 
