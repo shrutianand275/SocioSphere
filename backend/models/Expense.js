@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-
 const expenseSchema = new mongoose.Schema(
     {
         societyId: {
@@ -22,21 +21,12 @@ const expenseSchema = new mongoose.Schema(
             maxlength: 1000
         },
 
+        // Dynamic category - validated through Society Settings
         category: {
             type: String,
             required: true,
-            enum: [
-                'Maintenance',
-                'Security',
-                'Electricity',
-                'Water',
-                'Cleaning',
-                'Repair',
-                'Gardening',
-                'Staff Salary',
-                'Lift Maintenance',
-                'Other'
-            ]
+            trim: true,
+            maxlength: 100
         },
 
         amount: {

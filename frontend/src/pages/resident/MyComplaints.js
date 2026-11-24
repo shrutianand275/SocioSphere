@@ -16,10 +16,15 @@ import {
     createComplaint
 } from '../../services/complaintApi';
 
+import { getMySociety } from '../../services/societyApi';
+
 
 const MyComplaints = () => {
 
     const [complaints, setComplaints] = useState([]);
+
+    const [categories, setCategories] = useState([]);
+    const [categoriesLoading, setCategoriesLoading] = useState(true);
 
     const [loading, setLoading] = useState(true);
 
@@ -33,11 +38,12 @@ const MyComplaints = () => {
     const [form, setForm] = useState({
         title: '',
         description: '',
-        category: 'plumbing',
+        category: '',
         priority: 'medium'
     });
 
 
+    // Fetch complaints
     const fetchComplaints = async () => {
 
         try {
@@ -66,11 +72,54 @@ const MyComplaints = () => {
     };
 
 
+    // Fetch society complaint categories
+    const fetchCategories = async () => {
+
+        try {
+
+            setCategoriesLoading(true);
+
+            const response = await getMySociety();
+
+            const society = response.data.society;
+
+            const availableCategories =
+                society.complaintCategories || [];
+
+            setCategories(availableCategories);
+
+            setForm(prev => ({
+                ...prev,
+                category: availableCategories.includes(prev.category)
+                    ? prev.category
+                    : availableCategories[0] || ''
+            }));
+
+        } catch (err) {
+
+            setError(
+                err.response?.data?.message ||
+                'Unable to load complaint categories.'
+            );
+
+        } finally {
+
+            setCategoriesLoading(false);
+
+        }
+    };
+
+
+    // Initial loading
     useEffect(() => {
+
         fetchComplaints();
+        fetchCategories();
+
     }, []);
 
 
+    // Handle form changes
     const handleChange = (e) => {
 
         setForm({
@@ -81,6 +130,7 @@ const MyComplaints = () => {
     };
 
 
+    // Submit complaint
     const handleSubmit = async (e) => {
 
         e.preventDefault();
@@ -93,12 +143,14 @@ const MyComplaints = () => {
 
             await createComplaint(form);
 
-            setMessage('Your complaint has been submitted successfully.');
+            setMessage(
+                'Your complaint has been submitted successfully.'
+            );
 
             setForm({
                 title: '',
                 description: '',
-                category: 'plumbing',
+                category: categories[0] || '',
                 priority: 'medium'
             });
 
@@ -121,6 +173,7 @@ const MyComplaints = () => {
     };
 
 
+    // Status icon
     const statusIcon = (status) => {
 
         if (status === 'resolved') return <FaCheckCircle />;
@@ -130,6 +183,7 @@ const MyComplaints = () => {
         if (status === 'in-progress') return <FaClock />;
 
         return <FaClipboardList />;
+
     };
 
 
@@ -146,7 +200,10 @@ const MyComplaints = () => {
 
                 <button
                     className="refresh-button"
-                    onClick={fetchComplaints}
+                    onClick={() => {
+                        fetchComplaints();
+                        fetchCategories();
+                    }}
                 >
                     <FaSyncAlt />
                     Refresh
@@ -155,11 +212,16 @@ const MyComplaints = () => {
             </div>
 
 
+            {/* Success Message */}
+
             {message && (
                 <div className="success-message">
                     {message}
                 </div>
             )}
+
+
+            {/* Error Message */}
 
             {error && (
                 <div className="dashboard-error">
@@ -168,17 +230,24 @@ const MyComplaints = () => {
             )}
 
 
+            {/* Complaint Header */}
+
             <div className="resident-complaint-header">
 
                 <div>
                     <h3>Your Complaint History</h3>
+
                     <p>
                         Total complaints: {complaints.length}
                     </p>
                 </div>
 
                 <button
-                    onClick={() => setShowForm(!showForm)}
+                    onClick={() => {
+                        setError('');
+                        setMessage('');
+                        setShowForm(!showForm);
+                    }}
                 >
                     <FaPlus />
                     Submit Complaint
@@ -187,7 +256,7 @@ const MyComplaints = () => {
             </div>
 
 
-            {/* SUBMIT FORM */}
+            {/* Submit Complaint Form */}
 
             {showForm && (
 
@@ -198,6 +267,9 @@ const MyComplaints = () => {
                     <form onSubmit={handleSubmit}>
 
                         <div className="complaint-form-grid">
+
+
+                            {/* Complaint Title */}
 
                             <div className="complaint-field full">
 
@@ -216,6 +288,8 @@ const MyComplaints = () => {
                             </div>
 
 
+                            {/* Dynamic Category */}
+
                             <div className="complaint-field">
 
                                 <label>Category *</label>
@@ -225,20 +299,45 @@ const MyComplaints = () => {
                                     value={form.category}
                                     onChange={handleChange}
                                     required
+                                    disabled={
+                                        categoriesLoading ||
+                                        categories.length === 0
+                                    }
                                 >
-                                    <option value="plumbing">Plumbing</option>
-                                    <option value="electrical">Electrical</option>
-                                    <option value="cleaning">Cleaning</option>
-                                    <option value="security">Security</option>
-                                    <option value="lift">Lift</option>
-                                    <option value="parking">Parking</option>
-                                    <option value="water">Water</option>
-                                    <option value="maintenance">Maintenance</option>
-                                    <option value="other">Other</option>
+
+                                    {categoriesLoading ? (
+
+                                        <option value="">
+                                            Loading categories...
+                                        </option>
+
+                                    ) : categories.length === 0 ? (
+
+                                        <option value="">
+                                            No categories available
+                                        </option>
+
+                                    ) : (
+
+                                        categories.map((category) => (
+
+                                            <option
+                                                key={category}
+                                                value={category}
+                                            >
+                                                {category}
+                                            </option>
+
+                                        ))
+
+                                    )}
+
                                 </select>
 
                             </div>
 
+
+                            {/* Priority */}
 
                             <div className="complaint-field">
 
@@ -248,15 +347,23 @@ const MyComplaints = () => {
                                     name="priority"
                                     value={form.priority}
                                     onChange={handleChange}
+                                    required
                                 >
+
                                     <option value="low">Low</option>
+
                                     <option value="medium">Medium</option>
+
                                     <option value="high">High</option>
+
                                     <option value="urgent">Urgent</option>
+
                                 </select>
 
                             </div>
 
+
+                            {/* Description */}
 
                             <div className="complaint-field full">
 
@@ -277,23 +384,32 @@ const MyComplaints = () => {
                         </div>
 
 
+                        {/* Form Actions */}
+
                         <div className="complaint-form-actions">
 
                             <button
                                 type="button"
                                 className="cancel-button"
                                 onClick={() => setShowForm(false)}
+                                disabled={submitting}
                             >
                                 Cancel
                             </button>
 
                             <button
                                 type="submit"
-                                disabled={submitting}
+                                disabled={
+                                    submitting ||
+                                    categoriesLoading ||
+                                    categories.length === 0
+                                }
                             >
+
                                 {submitting
                                     ? 'Submitting...'
                                     : 'Submit Complaint'}
+
                             </button>
 
                         </div>
@@ -305,7 +421,7 @@ const MyComplaints = () => {
             )}
 
 
-            {/* COMPLAINT LIST */}
+            {/* Complaint List */}
 
             {loading ? (
 
@@ -316,6 +432,7 @@ const MyComplaints = () => {
             ) : complaints.length === 0 ? (
 
                 <div className="empty-state">
+
                     <FaClipboardList />
 
                     <h3>No complaints yet</h3>
@@ -349,6 +466,7 @@ const MyComplaints = () => {
 
                                     <p>
                                         {item.category} • {' '}
+
                                         {new Date(
                                             item.createdAt
                                         ).toLocaleDateString('en-IN')}
@@ -356,21 +474,29 @@ const MyComplaints = () => {
 
                                 </div>
 
-                                <span className={`status-badge ${item.status}`}>
+                                <span
+                                    className={`status-badge ${item.status}`}
+                                >
                                     {item.status}
                                 </span>
 
                             </div>
 
 
+                            {/* Description */}
+
                             <p className="my-complaint-description">
                                 {item.description}
                             </p>
 
 
+                            {/* Bottom Information */}
+
                             <div className="my-complaint-bottom">
 
-                                <span className={`priority-badge ${item.priority}`}>
+                                <span
+                                    className={`priority-badge ${item.priority}`}
+                                >
                                     {item.priority} priority
                                 </span>
 
@@ -381,11 +507,18 @@ const MyComplaints = () => {
                             </div>
 
 
+                            {/* Resolution Notes */}
+
                             {item.resolutionNotes && (
+
                                 <div className="resolution-note">
+
                                     <strong>Latest remarks:</strong>
+
                                     <p>{item.resolutionNotes}</p>
+
                                 </div>
+
                             )}
 
                         </div>
@@ -401,5 +534,6 @@ const MyComplaints = () => {
     );
 
 };
+
 
 export default MyComplaints;

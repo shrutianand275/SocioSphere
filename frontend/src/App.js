@@ -20,6 +20,8 @@ import ResidentExpenses from './pages/resident/ResidentExpenses';
 import ReportsAnalytics from './pages/admin/ReportAnalytics';
 import AdminMyProfile from './pages/admin/MyProfile';
 import ResidentMyProfile from './pages/resident/MyProfile';
+import SocietySettings from './pages/admin/SocietySettings';
+import SocietyInformation from './pages/resident/SocietyInformation';
 
 import ProtectedRoute from './components/common/ProtectedRoute';
 
@@ -178,6 +180,24 @@ function App() {
                 element={
                     <ProtectedRoute allowedRole="resident">
                         <ResidentMyProfile />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/admin/society-settings"
+                element={
+                    <ProtectedRoute allowedRole="admin">
+                        <SocietySettings />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/resident/society-information"
+                element={
+                    <ProtectedRoute allowedRole="resident">
+                        <SocietyInformation />
                     </ProtectedRoute>
                 }
             />

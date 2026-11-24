@@ -1,24 +1,12 @@
 import { useEffect, useState } from 'react';
-import {
-    FaWallet,
-    FaReceipt,
-    FaChartPie,
-    FaSearch,
-    FaEye,
-    FaTimes,
-    FaSync
-} from 'react-icons/fa';
-
+import {FaWallet, FaReceipt, FaChartPie, FaSearch, FaEye, FaTimes, FaSync} from 'react-icons/fa';
 import ResidentLayout from '../../components/dashboard/ResidentLayout';
 
-import {
-    getExpenses,
-    getExpenseStats
-} from '../../services/expenseApi';
+import {getExpenses, getExpenseStats} from '../../services/expenseApi';
+import { getMySociety } from '../../services/societyApi';
 
 function ResidentExpenses() {
     const [expenses, setExpenses] = useState([]);
-
     const [stats, setStats] = useState({
         overview: {
             totalExpenses: 0,
@@ -27,36 +15,48 @@ function ResidentExpenses() {
         },
         categorySummary: []
     });
-
+    const [categories, setCategories] = useState([]);
+    const [categoriesLoading, setCategoriesLoading] = useState(true);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-
     const [search, setSearch] = useState('');
     const [category, setCategory] = useState('All');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({
         total: 0,
         totalPages: 1
     });
-
     const [selectedExpense, setSelectedExpense] = useState(null);
+    const fetchCategories = async () => {
+        try {
+            setCategoriesLoading(true);
 
-    const categories = [
-        'Maintenance',
-        'Security',
-        'Electricity',
-        'Water',
-        'Cleaning',
-        'Repair',
-        'Gardening',
-        'Staff Salary',
-        'Lift Maintenance',
-        'Other'
-    ];
+            const response = await getMySociety();
 
+            const society = response.data.society || response.data;
+
+            const societyCategories = society.expenseCategories || [];
+
+            setCategories(societyCategories);
+
+            // Reset filter if selected category no longer exists
+            if (
+                category !== 'All' &&
+                !societyCategories.some(
+                    (item) => item.toLowerCase() === category.toLowerCase()
+                )
+            ) {
+                setCategory('All');
+            }
+        } catch (err) {
+            console.error('Unable to load expense categories:', err);
+            setCategories([]);
+        } finally {
+            setCategoriesLoading(false);
+        }
+    };
     const formatCurrency = (amount) =>
         new Intl.NumberFormat('en-IN', {
             style: 'currency',
@@ -102,6 +102,10 @@ function ResidentExpenses() {
     };
 
     useEffect(() => {
+        fetchCategories();
+    }, []);
+
+    useEffect(() => {
         fetchData();
     }, [search, category, startDate, endDate, page]);
 
@@ -131,6 +135,7 @@ function ResidentExpenses() {
                 {error && (
                     <div className="alert alert-danger">
                         {error}
+
                         <button
                             className="btn btn-sm btn-outline-danger ms-3"
                             onClick={fetchData}
@@ -283,6 +288,7 @@ function ResidentExpenses() {
                                 <select
                                     className="form-select"
                                     value={category}
+                                    disabled={categoriesLoading}
                                     onChange={(e) => {
                                         setCategory(e.target.value);
                                         setPage(1);
@@ -336,6 +342,13 @@ function ResidentExpenses() {
                             </div>
 
                         </div>
+
+                        {categoriesLoading && (
+                            <small className="text-muted d-block mt-2">
+                                Loading expense categories...
+                            </small>
+                        )}
+
                     </div>
                 </div>
 
@@ -358,6 +371,7 @@ function ResidentExpenses() {
                         {loading ? (
                             <div className="text-center py-5">
                                 <div className="spinner-border text-primary" />
+
                                 <p className="text-muted mt-2">
                                     Loading expense records...
                                 </p>
@@ -591,5 +605,4 @@ function ResidentExpenses() {
         </ResidentLayout>
     );
 }
-
 export default ResidentExpenses;

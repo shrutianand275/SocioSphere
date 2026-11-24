@@ -5,6 +5,7 @@ import './styles/AdminDashboard.css';
 import App from './App';
 import { AuthProvider } from './context/authContext';
 
+import 'bootstrap-icons/font/bootstrap-icons.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import './index.css';

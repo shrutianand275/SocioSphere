@@ -11,10 +11,12 @@ import {
     FaVoteYea,
     FaWallet,
     FaChartLine,
-    FaUserCircle
+    FaUserCircle,
+    FaCog
 } from 'react-icons/fa';
 
 import { useState } from 'react';
+import NotificationBell from '../notifications/NotificationBell';
 
 const DashboardLayout = ({ children }) => {
     const navigate = useNavigate();
@@ -66,6 +68,11 @@ const DashboardLayout = ({ children }) => {
             title: 'My Profile',
             path: '/admin/profile',
             icon: <FaUserCircle />
+        },
+        {
+            title: 'Society Settings',
+            path: '/admin/society-settings',
+            icon: <FaCog />
         }
     ];
 
@@ -97,10 +104,6 @@ const DashboardLayout = ({ children }) => {
                     >
                         <FaTimes />
                     </button>
-                </div>
-
-                <div className="sidebar-section-title">
-                    MAIN MENU
                 </div>
 
                 <nav className="sidebar-navigation">
@@ -152,12 +155,16 @@ const DashboardLayout = ({ children }) => {
                     </div>
 
                     <div className="admin-profile">
+
+                        <NotificationBell />
+
                         <div className="admin-avatar">A</div>
 
                         <div>
                             <strong>Administrator</strong>
                             <small>Society Admin</small>
                         </div>
+
                     </div>
 
                 </header>

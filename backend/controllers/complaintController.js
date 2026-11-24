@@ -1,4 +1,11 @@
 const Complaint = require('../models/Complaint');
+const User = require('../models/User');
+const Society = require('../models/Society');
+
+const {
+    createBulkNotifications,
+    createNotification
+} = require('../utils/notificationHelper');
 
 
 // ==========================================
@@ -15,32 +22,53 @@ exports.createComplaint = async (req, res) => {
             images
         } = req.body;
 
-        if (!title || !description || !category) {
+        if (
+            !title ||
+            typeof title !== 'string' ||
+            !description ||
+            typeof description !== 'string' ||
+            !category ||
+            typeof category !== 'string'
+        ) {
             return res.status(400).json({
                 success: false,
                 message: 'Title, description and category are required'
             });
         }
 
-        const allowedCategories = [
-            'plumbing',
-            'electrical',
-            'cleaning',
-            'security',
-            'lift',
-            'parking',
-            'water',
-            'maintenance',
-            'other'
-        ];
-
-        if (!allowedCategories.includes(category)) {
+        if (!req.user.societyId) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid complaint category'
+                message: 'User is not associated with any society'
             });
         }
 
+        // Get society-specific complaint categories
+        const society = await Society.findById(req.user.societyId);
+
+        if (!society) {
+            return res.status(404).json({
+                success: false,
+                message: 'Society not found'
+            });
+        }
+
+        const allowedCategories = society.complaintCategories || [];
+
+        // Case-insensitive category validation
+        const selectedCategory = allowedCategories.find(
+            item =>
+                item.toLowerCase() === category.trim().toLowerCase()
+        );
+
+        if (!selectedCategory) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid complaint category. Please select an available category.'
+            });
+        }
+
+        // Validate priority
         const allowedPriorities = [
             'low',
             'medium',
@@ -58,11 +86,14 @@ exports.createComplaint = async (req, res) => {
             });
         }
 
+        // Validate images
         if (
             images !== undefined &&
-            (!Array.isArray(images) ||
+            (
+                !Array.isArray(images) ||
                 images.length > 5 ||
-                !images.every(image => typeof image === 'string'))
+                !images.every(image => typeof image === 'string')
+            )
         ) {
             return res.status(400).json({
                 success: false,
@@ -70,33 +101,50 @@ exports.createComplaint = async (req, res) => {
             });
         }
 
+        // Create complaint
         const complaint = await Complaint.create({
-
             societyId: req.user.societyId,
-
             residentId: req.user._id,
-
             title: title.trim(),
-
             description: description.trim(),
-
-            category,
-
+            category: selectedCategory,
             priority: priority || 'medium',
-
             images: images || [],
-
             status: 'pending',
-
             statusHistory: [{
                 status: 'pending',
                 remarks: 'Complaint submitted',
                 updatedBy: req.user._id
             }]
-
         });
 
-        res.status(201).json({
+        // Notify society admins about new complaint
+        try {
+            const admins = await User.find({
+                societyId: req.user.societyId,
+                role: 'admin',
+                isActive: true
+            }).select('_id');
+
+            if (admins.length > 0) {
+                await createBulkNotifications({
+                    societyId: req.user.societyId,
+                    recipients: admins.map(admin => admin._id),
+                    title: 'New Complaint Submitted',
+                    message: `${req.user.fullName} submitted a complaint: ${complaint.title}`,
+                    type: 'complaint',
+                    relatedId: complaint._id,
+                    relatedModel: 'Complaint'
+                });
+            }
+        } catch (notificationError) {
+            console.error(
+                'Complaint Notification Error:',
+                notificationError
+            );
+        }
+
+        return res.status(201).json({
             success: true,
             message: 'Complaint submitted successfully',
             complaint
@@ -105,7 +153,7 @@ exports.createComplaint = async (req, res) => {
     } catch (error) {
         console.error('Create Complaint Error:', error);
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to submit complaint'
         });
@@ -134,10 +182,12 @@ exports.getComplaints = async (req, res) => {
             societyId: req.user.societyId
         };
 
+        // Residents can only see their own complaints
         if (req.user.role === 'resident') {
             filter.residentId = req.user._id;
         }
 
+        // Status filter
         if (
             status &&
             ['pending', 'in-progress', 'resolved', 'rejected'].includes(status)
@@ -145,23 +195,12 @@ exports.getComplaints = async (req, res) => {
             filter.status = status;
         }
 
-        if (
-            category &&
-            [
-                'plumbing',
-                'electrical',
-                'cleaning',
-                'security',
-                'lift',
-                'parking',
-                'water',
-                'maintenance',
-                'other'
-            ].includes(category)
-        ) {
+        // Dynamic category filter
+        if (category && typeof category === 'string') {
             filter.category = category;
         }
 
+        // Priority filter
         if (
             priority &&
             ['low', 'medium', 'high', 'urgent'].includes(priority)
@@ -169,24 +208,34 @@ exports.getComplaints = async (req, res) => {
             filter.priority = priority;
         }
 
-        if (search) {
+        // Search filter
+        if (search && typeof search === 'string') {
+            const escapedSearch = search.replace(
+                /[.*+?^${}()|[\]\\]/g,
+                '\\$&'
+            );
+
             filter.$or = [
                 {
                     title: {
-                        $regex: search,
+                        $regex: escapedSearch,
                         $options: 'i'
                     }
                 },
                 {
                     description: {
-                        $regex: search,
+                        $regex: escapedSearch,
                         $options: 'i'
                     }
                 }
             ];
         }
 
-        const currentPage = Math.max(1, Number(page) || 1);
+        // Pagination
+        const currentPage = Math.max(
+            1,
+            Number(page) || 1
+        );
 
         const pageLimit = Math.min(
             100,
@@ -198,7 +247,10 @@ exports.getComplaints = async (req, res) => {
         const [complaints, total] = await Promise.all([
 
             Complaint.find(filter)
-                .populate('residentId', 'fullName email phone flatNumber')
+                .populate(
+                    'residentId',
+                    'fullName email phone flatNumber'
+                )
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(pageLimit),
@@ -207,7 +259,7 @@ exports.getComplaints = async (req, res) => {
 
         ]);
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             complaints,
             pagination: {
@@ -221,7 +273,7 @@ exports.getComplaints = async (req, res) => {
     } catch (error) {
         console.error('Get Complaints Error:', error);
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to fetch complaints'
         });
@@ -245,8 +297,14 @@ exports.getComplaintById = async (req, res) => {
         }
 
         const complaint = await Complaint.findOne(filter)
-            .populate('residentId', 'fullName email phone flatNumber')
-            .populate('statusHistory.updatedBy', 'fullName role');
+            .populate(
+                'residentId',
+                'fullName email phone flatNumber'
+            )
+            .populate(
+                'statusHistory.updatedBy',
+                'fullName role'
+            );
 
         if (!complaint) {
             return res.status(404).json({
@@ -255,7 +313,7 @@ exports.getComplaintById = async (req, res) => {
             });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             complaint
         });
@@ -263,7 +321,7 @@ exports.getComplaintById = async (req, res) => {
     } catch (error) {
         console.error('Get Complaint Error:', error);
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to fetch complaint'
         });
@@ -325,7 +383,25 @@ exports.updateComplaintStatus = async (req, res) => {
 
         await complaint.save();
 
-        res.status(200).json({
+        // Notify resident about complaint status update
+        try {
+            await createNotification({
+                societyId: complaint.societyId,
+                recipient: complaint.residentId,
+                title: 'Complaint Status Updated',
+                message: `Your complaint "${complaint.title}" status has been changed to ${status}.`,
+                type: 'complaint',
+                relatedId: complaint._id,
+                relatedModel: 'Complaint'
+            });
+        } catch (notificationError) {
+            console.error(
+                'Complaint Status Notification Error:',
+                notificationError
+            );
+        }
+
+        return res.status(200).json({
             success: true,
             message: 'Complaint status updated successfully',
             complaint
@@ -334,7 +410,7 @@ exports.updateComplaintStatus = async (req, res) => {
     } catch (error) {
         console.error('Update Complaint Status Error:', error);
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to update complaint status'
         });
@@ -376,7 +452,7 @@ exports.assignComplaint = async (req, res) => {
 
         await complaint.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: 'Complaint assigned successfully',
             complaint
@@ -385,7 +461,7 @@ exports.assignComplaint = async (req, res) => {
     } catch (error) {
         console.error('Assign Complaint Error:', error);
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to assign complaint'
         });
@@ -435,12 +511,14 @@ exports.getComplaintStats = async (req, res) => {
             Complaint.countDocuments({
                 societyId,
                 priority: 'urgent',
-                status: { $nin: ['resolved', 'rejected'] }
+                status: {
+                    $nin: ['resolved', 'rejected']
+                }
             })
 
         ]);
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             stats: {
                 total,
@@ -455,7 +533,7 @@ exports.getComplaintStats = async (req, res) => {
     } catch (error) {
         console.error('Complaint Stats Error:', error);
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Failed to fetch complaint statistics'
         });

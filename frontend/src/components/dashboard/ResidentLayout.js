@@ -5,7 +5,6 @@ import {
     FaBuilding,
     FaHome,
     FaClipboardList,
-    FaUser,
     FaBullhorn,
     FaFileInvoiceDollar,
     FaVoteYea,
@@ -17,6 +16,7 @@ import {
 } from 'react-icons/fa';
 
 import { useAuth } from '../../context/authContext';
+import NotificationBell from '../notifications/NotificationBell';
 
 const ResidentLayout = ({ children }) => {
 
@@ -30,6 +30,11 @@ const ResidentLayout = ({ children }) => {
             title: 'Dashboard',
             path: '/resident/dashboard',
             icon: <FaHome />
+        },
+        {
+            title: 'Society Information',
+            path: '/resident/society-information',
+            icon: <FaBuilding />
         },
         {
             title: 'My Complaints',
@@ -101,10 +106,6 @@ const ResidentLayout = ({ children }) => {
 
                 </div>
 
-                <div className="resident-sidebar-title">
-                    RESIDENT MENU
-                </div>
-
                 <nav className="resident-navigation">
 
                     {navigation.map((item) => (
@@ -170,6 +171,8 @@ const ResidentLayout = ({ children }) => {
                     </div>
 
                     <div className="resident-topbar-profile">
+
+                        <NotificationBell />
 
                         <div className="resident-topbar-avatar">
                             {user?.fullName?.charAt(0)?.toUpperCase() || 'R'}

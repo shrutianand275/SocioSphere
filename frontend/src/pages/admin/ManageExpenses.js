@@ -22,25 +22,14 @@ import {
     deleteExpense
 } from '../../services/expenseApi';
 
-import '../../styles/AdminDashboard.css';
+import { getMySociety } from '../../services/societyApi';
 
-const categories = [
-    'Maintenance',
-    'Security',
-    'Electricity',
-    'Water',
-    'Cleaning',
-    'Repair',
-    'Gardening',
-    'Staff Salary',
-    'Lift Maintenance',
-    'Other'
-];
+import '../../styles/AdminDashboard.css';
 
 const initialForm = {
     title: '',
     description: '',
-    category: 'Maintenance',
+    category: '',
     amount: '',
     vendor: '',
     expenseDate: new Date().toISOString().slice(0, 10),
@@ -49,6 +38,10 @@ const initialForm = {
 
 function ManageExpenses() {
     const [expenses, setExpenses] = useState([]);
+
+    const [categories, setCategories] = useState([]);
+    const [categoriesLoading, setCategoriesLoading] = useState(true);
+
     const [stats, setStats] = useState({
         overview: {
             totalExpenses: 0,
@@ -86,6 +79,57 @@ function ManageExpenses() {
             maximumFractionDigits: 2
         }).format(amount || 0);
 
+    // ==========================================
+    // FETCH SOCIETY EXPENSE CATEGORIES
+    // ==========================================
+
+    const fetchCategories = async () => {
+        try {
+            setCategoriesLoading(true);
+
+            const response = await getMySociety();
+
+            const society =
+                response?.data?.society ||
+                response?.society ||
+                response?.data;
+
+            const societyCategories = society?.expenseCategories;
+
+            if (
+                Array.isArray(societyCategories) &&
+                societyCategories.length > 0
+            ) {
+                setCategories(societyCategories);
+
+                setForm((previous) => ({
+                    ...previous,
+                    category:
+                        previous.category &&
+                        societyCategories.includes(previous.category)
+                            ? previous.category
+                            : societyCategories[0]
+                }));
+            } else {
+                setCategories([]);
+            }
+        } catch (err) {
+            console.error('Fetch Expense Categories Error:', err);
+
+            setCategories([]);
+            setError(
+                err.response?.data?.message ||
+                'Unable to load expense categories. Please check Society Settings.'
+            );
+        } finally {
+            setCategoriesLoading(false);
+        }
+    };
+
+    // ==========================================
+    // FETCH EXPENSES AND STATISTICS
+    // ==========================================
+
     const fetchData = async () => {
         try {
             setLoading(true);
@@ -104,6 +148,7 @@ function ManageExpenses() {
             ]);
 
             setExpenses(expenseResponse.data.expenses || []);
+
             setPagination(
                 expenseResponse.data.pagination || {
                     total: 0,
@@ -112,6 +157,7 @@ function ManageExpenses() {
             );
 
             setStats(statsResponse.data);
+
         } catch (err) {
             setError(
                 err.response?.data?.message ||
@@ -123,8 +169,16 @@ function ManageExpenses() {
     };
 
     useEffect(() => {
+        fetchCategories();
+    }, []);
+
+    useEffect(() => {
         fetchData();
     }, [search, categoryFilter, startDate, endDate, page]);
+
+    // ==========================================
+    // FORM HANDLING
+    // ==========================================
 
     const handleChange = (e) => {
         setForm({
@@ -134,10 +188,21 @@ function ManageExpenses() {
     };
 
     const openAddForm = () => {
+        if (categories.length === 0) {
+            setError('Please add expense categories in Society Settings first.');
+            return;
+        }
+
         setEditingId(null);
-        setForm(initialForm);
+
+        setForm({
+            ...initialForm,
+            category: categories[0]
+        });
+
         setShowForm(true);
         setError('');
+        setMessage('');
     };
 
     const openEditForm = (expense) => {
@@ -146,7 +211,7 @@ function ManageExpenses() {
         setForm({
             title: expense.title || '',
             description: expense.description || '',
-            category: expense.category || 'Maintenance',
+            category: expense.category || categories[0] || '',
             amount: expense.amount || '',
             vendor: expense.vendor || '',
             expenseDate: expense.expenseDate
@@ -157,7 +222,12 @@ function ManageExpenses() {
 
         setShowForm(true);
         setError('');
+        setMessage('');
     };
+
+    // ==========================================
+    // ADD / UPDATE EXPENSE
+    // ==========================================
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -165,6 +235,11 @@ function ManageExpenses() {
         try {
             setError('');
             setMessage('');
+
+            if (categories.length === 0) {
+                setError('No expense categories available. Please configure them in Society Settings.');
+                return;
+            }
 
             const payload = {
                 ...form,
@@ -181,9 +256,14 @@ function ManageExpenses() {
 
             setShowForm(false);
             setEditingId(null);
-            setForm(initialForm);
+
+            setForm({
+                ...initialForm,
+                category: categories[0] || ''
+            });
 
             await fetchData();
+
         } catch (err) {
             setError(
                 err.response?.data?.message ||
@@ -191,6 +271,10 @@ function ManageExpenses() {
             );
         }
     };
+
+    // ==========================================
+    // DELETE EXPENSE
+    // ==========================================
 
     const handleDelete = async (id) => {
         const confirmed = window.confirm(
@@ -201,8 +285,11 @@ function ManageExpenses() {
 
         try {
             await deleteExpense(id);
+
             setMessage('Expense deleted successfully.');
+
             await fetchData();
+
         } catch (err) {
             setError(
                 err.response?.data?.message ||
@@ -211,14 +298,30 @@ function ManageExpenses() {
         }
     };
 
+    // ==========================================
+    // RESET FILTERS
+    // ==========================================
+
+    const resetFilters = () => {
+        setSearch('');
+        setCategoryFilter('All');
+        setStartDate('');
+        setEndDate('');
+        setPage(1);
+    };
+
     return (
         <DashboardLayout>
             <div className="container-fluid py-3 expense-page">
 
                 {/* Header */}
+
                 <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
                     <div>
-                        <h2 className="fw-bold mb-1">Expense Management</h2>
+                        <h2 className="fw-bold mb-1">
+                            Expense Management
+                        </h2>
+
                         <p className="text-muted mb-0">
                             Manage and monitor society expenses.
                         </p>
@@ -227,6 +330,7 @@ function ManageExpenses() {
                     <button
                         className="btn btn-primary"
                         onClick={openAddForm}
+                        disabled={categoriesLoading || categories.length === 0}
                     >
                         <FaPlus className="me-2" />
                         Add Expense
@@ -236,6 +340,7 @@ function ManageExpenses() {
                 {message && (
                     <div className="alert alert-success alert-dismissible">
                         {message}
+
                         <button
                             className="btn-close"
                             onClick={() => setMessage('')}
@@ -244,12 +349,25 @@ function ManageExpenses() {
                 )}
 
                 {error && (
-                    <div className="alert alert-danger">
+                    <div className="alert alert-danger alert-dismissible">
                         {error}
+
+                        <button
+                            className="btn-close"
+                            onClick={() => setError('')}
+                        />
+                    </div>
+                )}
+
+                {!categoriesLoading && categories.length === 0 && (
+                    <div className="alert alert-warning">
+                        No expense categories are configured.
+                        Please add categories from Admin → Society Settings.
                     </div>
                 )}
 
                 {/* Statistics */}
+
                 <div className="row g-3 mb-4">
 
                     <div className="col-md-4">
@@ -260,12 +378,14 @@ function ManageExpenses() {
                                         <p className="text-muted mb-1">
                                             Total Expenses
                                         </p>
+
                                         <h3 className="fw-bold">
                                             {formatCurrency(
                                                 stats.overview?.totalExpenses
                                             )}
                                         </h3>
                                     </div>
+
                                     <FaWallet className="text-primary fs-2" />
                                 </div>
                             </div>
@@ -280,10 +400,12 @@ function ManageExpenses() {
                                         <p className="text-muted mb-1">
                                             Expense Records
                                         </p>
+
                                         <h3 className="fw-bold">
                                             {stats.overview?.totalRecords || 0}
                                         </h3>
                                     </div>
+
                                     <FaReceipt className="text-success fs-2" />
                                 </div>
                             </div>
@@ -298,12 +420,14 @@ function ManageExpenses() {
                                         <p className="text-muted mb-1">
                                             Average Expense
                                         </p>
+
                                         <h3 className="fw-bold">
                                             {formatCurrency(
                                                 stats.overview?.averageExpense
                                             )}
                                         </h3>
                                     </div>
+
                                     <FaChartPie className="text-warning fs-2" />
                                 </div>
                             </div>
@@ -313,6 +437,7 @@ function ManageExpenses() {
                 </div>
 
                 {/* Category Summary */}
+
                 <div className="card border-0 shadow-sm mb-4">
                     <div className="card-body">
                         <h5 className="fw-bold mb-3">
@@ -330,9 +455,11 @@ function ManageExpenses() {
                                             <div className="text-muted small">
                                                 {item._id}
                                             </div>
+
                                             <h5 className="fw-bold mb-1">
                                                 {formatCurrency(item.totalAmount)}
                                             </h5>
+
                                             <small className="text-muted">
                                                 {item.count} records
                                             </small>
@@ -349,6 +476,7 @@ function ManageExpenses() {
                 </div>
 
                 {/* Filters */}
+
                 <div className="card border-0 shadow-sm mb-4">
                     <div className="card-body">
                         <div className="row g-3">
@@ -358,6 +486,7 @@ function ManageExpenses() {
                                     <span className="input-group-text">
                                         <FaSearch />
                                     </span>
+
                                     <input
                                         className="form-control"
                                         placeholder="Search expenses..."
@@ -379,9 +508,15 @@ function ManageExpenses() {
                                         setPage(1);
                                     }}
                                 >
-                                    <option value="All">All Categories</option>
+                                    <option value="All">
+                                        All Categories
+                                    </option>
+
                                     {categories.map((category) => (
-                                        <option key={category} value={category}>
+                                        <option
+                                            key={category}
+                                            value={category}
+                                        >
                                             {category}
                                         </option>
                                     ))}
@@ -418,13 +553,7 @@ function ManageExpenses() {
                             <div className="col-lg-3">
                                 <button
                                     className="btn btn-outline-secondary w-100"
-                                    onClick={() => {
-                                        setSearch('');
-                                        setCategoryFilter('All');
-                                        setStartDate('');
-                                        setEndDate('');
-                                        setPage(1);
-                                    }}
+                                    onClick={resetFilters}
                                 >
                                     <FaSync className="me-2" />
                                     Reset Filters
@@ -436,6 +565,7 @@ function ManageExpenses() {
                 </div>
 
                 {/* Expense Table */}
+
                 <div className="card border-0 shadow-sm">
                     <div className="card-body">
 
@@ -446,6 +576,7 @@ function ManageExpenses() {
                         {loading ? (
                             <div className="text-center py-5">
                                 <div className="spinner-border text-primary" />
+
                                 <p className="mt-2 text-muted">
                                     Loading expenses...
                                 </p>
@@ -453,7 +584,9 @@ function ManageExpenses() {
                         ) : expenses.length === 0 ? (
                             <div className="text-center py-5">
                                 <FaReceipt className="fs-1 text-muted mb-3" />
+
                                 <h5>No expenses found</h5>
+
                                 <p className="text-muted">
                                     Add your first society expense.
                                 </p>
@@ -477,7 +610,10 @@ function ManageExpenses() {
                                         {expenses.map((expense) => (
                                             <tr key={expense._id}>
                                                 <td>
-                                                    <strong>{expense.title}</strong>
+                                                    <strong>
+                                                        {expense.title}
+                                                    </strong>
+
                                                     <div className="small text-muted">
                                                         {expense.description}
                                                     </div>
@@ -551,6 +687,7 @@ function ManageExpenses() {
                         )}
 
                         {/* Pagination */}
+
                         {!loading && pagination.totalPages > 1 && (
                             <div className="d-flex justify-content-between align-items-center mt-3">
                                 <span className="text-muted small">
@@ -584,10 +721,12 @@ function ManageExpenses() {
                     </div>
                 </div>
 
-                {/* Add/Edit Modal */}
+                {/* Add / Edit Modal */}
+
                 {showForm && (
                     <div className="expense-modal-overlay">
                         <div className="expense-modal">
+
                             <div className="d-flex justify-content-between align-items-center mb-4">
                                 <h4 className="fw-bold mb-0">
                                     {editingId ? 'Edit Expense' : 'Add New Expense'}
@@ -608,6 +747,7 @@ function ManageExpenses() {
                                         <label className="form-label">
                                             Expense Title *
                                         </label>
+
                                         <input
                                             className="form-control"
                                             name="title"
@@ -622,6 +762,7 @@ function ManageExpenses() {
                                         <label className="form-label">
                                             Category *
                                         </label>
+
                                         <select
                                             className="form-select"
                                             name="category"
@@ -629,8 +770,18 @@ function ManageExpenses() {
                                             onChange={handleChange}
                                             required
                                         >
+                                            {form.category &&
+                                                !categories.includes(form.category) && (
+                                                    <option value={form.category}>
+                                                        {form.category} (Existing)
+                                                    </option>
+                                                )}
+
                                             {categories.map((category) => (
-                                                <option key={category}>
+                                                <option
+                                                    key={category}
+                                                    value={category}
+                                                >
                                                     {category}
                                                 </option>
                                             ))}
@@ -641,6 +792,7 @@ function ManageExpenses() {
                                         <label className="form-label">
                                             Amount (₹) *
                                         </label>
+
                                         <input
                                             type="number"
                                             className="form-control"
@@ -657,6 +809,7 @@ function ManageExpenses() {
                                         <label className="form-label">
                                             Expense Date *
                                         </label>
+
                                         <input
                                             type="date"
                                             className="form-control"
@@ -671,6 +824,7 @@ function ManageExpenses() {
                                         <label className="form-label">
                                             Vendor / Service Provider
                                         </label>
+
                                         <input
                                             className="form-control"
                                             name="vendor"
@@ -684,6 +838,7 @@ function ManageExpenses() {
                                         <label className="form-label">
                                             Receipt URL
                                         </label>
+
                                         <input
                                             type="url"
                                             className="form-control"
@@ -698,6 +853,7 @@ function ManageExpenses() {
                                         <label className="form-label">
                                             Description
                                         </label>
+
                                         <textarea
                                             className="form-control"
                                             rows="3"
@@ -722,6 +878,7 @@ function ManageExpenses() {
                                     <button
                                         type="submit"
                                         className="btn btn-primary"
+                                        disabled={categories.length === 0}
                                     >
                                         {editingId ? 'Update Expense' : 'Save Expense'}
                                     </button>
@@ -732,9 +889,11 @@ function ManageExpenses() {
                 )}
 
                 {/* View Details Modal */}
+
                 {selectedExpense && (
                     <div className="expense-modal-overlay">
                         <div className="expense-modal">
+
                             <div className="d-flex justify-content-between align-items-center mb-4">
                                 <h4 className="fw-bold mb-0">
                                     Expense Details
@@ -749,6 +908,7 @@ function ManageExpenses() {
                             </div>
 
                             <div className="row g-3">
+
                                 <div className="col-6">
                                     <small className="text-muted">Title</small>
                                     <h6>{selectedExpense.title}</h6>
@@ -769,7 +929,9 @@ function ManageExpenses() {
                                 <div className="col-6">
                                     <small className="text-muted">Date</small>
                                     <h6>
-                                        {new Date(selectedExpense.expenseDate).toLocaleDateString('en-IN')}
+                                        {new Date(
+                                            selectedExpense.expenseDate
+                                        ).toLocaleDateString('en-IN')}
                                     </h6>
                                 </div>
 
@@ -780,12 +942,16 @@ function ManageExpenses() {
 
                                 <div className="col-12">
                                     <small className="text-muted">Description</small>
-                                    <p>{selectedExpense.description || 'No description'}</p>
+                                    <p>
+                                        {selectedExpense.description || 'No description'}
+                                    </p>
                                 </div>
 
                                 <div className="col-12">
                                     <small className="text-muted">Added By</small>
-                                    <h6>{selectedExpense.createdBy?.fullName || '—'}</h6>
+                                    <h6>
+                                        {selectedExpense.createdBy?.fullName || '—'}
+                                    </h6>
                                 </div>
 
                                 {selectedExpense.receiptUrl && (
@@ -801,6 +967,7 @@ function ManageExpenses() {
                                         </a>
                                     </div>
                                 )}
+
                             </div>
                         </div>
                     </div>

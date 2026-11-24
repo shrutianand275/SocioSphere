@@ -52,20 +52,12 @@ const complaintSchema = new mongoose.Schema({
         maxlength: 2000
     },
 
+    // Dynamic category - validated through Society Settings
     category: {
         type: String,
-        enum: [
-            'plumbing',
-            'electrical',
-            'cleaning',
-            'security',
-            'lift',
-            'parking',
-            'water',
-            'maintenance',
-            'other'
-        ],
-        required: true
+        required: true,
+        trim: true,
+        maxlength: 100
     },
 
     priority: {

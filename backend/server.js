@@ -40,6 +40,8 @@ app.use('/api/voting', require('./routes/votingRoutes'));
 app.use('/api/expenses', require('./routes/expenseRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/profile', require('./routes/profileRoutes'));
+app.use('/api/society', require('./routes/societyRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 // Home API
 app.get('/', (req, res) => {

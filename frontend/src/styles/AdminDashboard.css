@@ -1,18 +1,57 @@
-.dashboard-container {
-    min-height: 100vh;
-    display: flex;
-    background: #f5f7fb;
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    overflow-x: hidden;
+}
+
+/* Main Dashboard Layout */
+.dashboard-container {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    background: #f5f7fb;
+    overflow-x: hidden;
+}
+
+/* Fixed Sidebar */
 .dashboard-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 255px;
+    height: 100vh;
     background: #ffffff;
     border-right: 1px solid #e8edf4;
     display: flex;
     flex-direction: column;
-    position: fixed;
-    height: 100vh;
     z-index: 1000;
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+/* Main Content */
+.dashboard-main {
+    flex: 1;
+    width: calc(100% - 255px);
+    min-width: 0;
+    margin-left: 255px;
+    padding: 0;
 }
 
 .sidebar-brand {
@@ -104,12 +143,8 @@
     cursor: pointer;
 }
 
-.dashboard-main {
-    margin-left: 255px;
-    width: calc(100% - 255px);
-}
-
 .dashboard-topbar {
+    width: 100%;
     height: 78px;
     background: #ffffff;
     border-bottom: 1px solid #e8edf4;
@@ -117,6 +152,13 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    box-sizing: border-box;
+}
+
+.dashboard-content {
+    width: 100%;
+    padding: 30px;
+    box-sizing: border-box;
 }
 
 .dashboard-topbar h5 {
@@ -157,10 +199,6 @@
     justify-content: center;
     border-radius: 50%;
     font-weight: 700;
-}
-
-.dashboard-content {
-    padding: 30px;
 }
 
 .dashboard-heading {
@@ -522,63 +560,33 @@
 }
 
 @media (max-width: 768px) {
+
     .dashboard-sidebar {
+        left: 0;
         transform: translateX(-100%);
-        transition: 0.3s;
+        transition: transform 0.3s ease;
     }
 
     .dashboard-sidebar.open {
         transform: translateX(0);
     }
 
-    .sidebar-close {
-        display: block;
-    }
-
-    .sidebar-overlay {
-        display: block;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.35);
-        z-index: 999;
-    }
-
     .dashboard-main {
-        margin-left: 0;
         width: 100%;
-    }
-
-    .mobile-menu-button {
-        display: block;
+        margin-left: 0;
+        min-width: 0;
     }
 
     .dashboard-topbar {
         padding: 0 15px;
-        gap: 12px;
     }
 
     .dashboard-content {
         padding: 20px 15px;
     }
 
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .dashboard-heading {
-        align-items: flex-start;
-    }
-
-    .resident-toolbar {
-        flex-direction: column;
-    }
-
-    .resident-search {
-        min-height: 44px;
-    }
-
-    .resident-toolbar select {
-        min-height: 44px;
+    .mobile-menu-button {
+        display: block;
     }
 
     .admin-profile {
@@ -1164,27 +1172,42 @@
     }
 }
 
-/* =====================================
-   RESIDENT PORTAL LAYOUT
-===================================== */
-
+/* Resident Layout */
 .resident-layout {
+    display: block;
+    width: 100%;
+    max-width: 100%;
     min-height: 100vh;
-    display: flex;
+    margin: 0;
+    padding: 0;
     background: #f5f7fb;
+    overflow-x: hidden;
 }
 
+/* Resident Sidebar */
 .resident-sidebar {
-    width: 255px;
-    height: 100vh;
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 1000;
+    width: 255px;
+    height: 100vh;
     background: #ffffff;
     border-right: 1px solid #e8edf4;
     display: flex;
     flex-direction: column;
+    z-index: 1000;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+/* Resident Main */
+.resident-main {
+    width: calc(100% - 255px);
+    min-width: 0;
+    min-height: 100vh;
+    margin-left: 255px;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 .resident-brand {
@@ -1314,20 +1337,25 @@
     font-size: 13px;
 }
 
-.resident-main {
-    width: calc(100% - 255px);
-    margin-left: 255px;
-    min-height: 100vh;
-}
-
 .resident-topbar {
+    width: 100%;
     height: 78px;
     padding: 0 30px;
     background: #ffffff;
     border-bottom: 1px solid #e8edf4;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
+
+    box-sizing: border-box;
+}
+
+.resident-content {
+    width: 100%;
+    padding: 30px;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .resident-topbar h5 {
@@ -1363,10 +1391,6 @@
     margin-top: 4px;
 }
 
-.resident-content {
-    padding: 30px;
-}
-
 .resident-menu-button {
     display: none;
     border: none;
@@ -1378,10 +1402,6 @@
 .resident-sidebar-overlay {
     display: none;
 }
-
-/* =====================================
-   RESIDENT DASHBOARD
-===================================== */
 
 .resident-welcome {
     padding: 30px;
@@ -1533,8 +1553,9 @@
 @media (max-width: 768px) {
 
     .resident-sidebar {
+        left: 0;
         transform: translateX(-100%);
-        transition: 0.3s;
+        transition: transform 0.3s ease;
     }
 
     .resident-sidebar.open {
@@ -1573,18 +1594,6 @@
 
     .resident-topbar-profile {
         display: none;
-    }
-
-    .resident-services-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .resident-welcome {
-        padding: 22px;
-    }
-
-    .resident-welcome h2 {
-        font-size: 20px;
     }
 }
 
@@ -2554,5 +2563,66 @@
 
     .profile-modal {
         padding: 18px;
+    }
+}
+
+/* Society Settings */
+
+.society-settings-page {
+    min-width: 0;
+}
+
+.society-settings-page .card {
+    border-radius: 14px;
+}
+
+.society-main-icon {
+    width: 65px;
+    height: 65px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e8efff;
+    color: #2563eb;
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.society-category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.society-category-badge button {
+    border: 0;
+    background: transparent;
+    color: #dc2626;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
+.society-category-badge button:hover {
+    color: #991b1b;
+}
+
+@media (max-width: 576px) {
+    .society-main-icon {
+        width: 52px;
+        height: 52px;
+        font-size: 22px;
+    }
+
+    .society-settings-page h2 {
+        font-size: 22px;
     }
 }

@@ -1,5 +1,11 @@
 const Notice = require('../models/Notice');
 
+const User = require('../models/User');
+
+const {
+    createBulkNotifications
+} = require('../utils/notificationHelper');
+
 const categories = [
     'general',
     'maintenance',
@@ -111,6 +117,35 @@ exports.createNotice = async (req, res) => {
             publishAt: publicationDate,
             expiresAt: expiryDate
         });
+
+        // Notify residents when notice is published immediately
+        if (
+            notice.status === 'published' &&
+            notice.publishAt <= new Date()
+        ) {
+            try {
+                const residents = await User.find({
+                    societyId: req.user.societyId,
+                    role: 'resident',
+                    approvalStatus: 'approved',
+                    isActive: true
+                }).select('_id');
+
+                if (residents.length > 0) {
+                    await createBulkNotifications({
+                        societyId: req.user.societyId,
+                        recipients: residents.map(resident => resident._id),
+                        title: 'New Society Notice',
+                        message: `A new notice has been published: ${notice.title}`,
+                        type: 'notice',
+                        relatedId: notice._id,
+                        relatedModel: 'Notice'
+                    });
+                }
+            } catch (notificationError) {
+                console.error('Notice Notification Error:', notificationError);
+            }
+        }
 
         res.status(201).json({
             success: true,
@@ -393,6 +428,10 @@ exports.updateNotice = async (req, res) => {
             });
         }
 
+        const wasPublished =
+            existingNotice.status === 'published' &&
+            existingNotice.publishAt <= new Date();
+
         const notice = await Notice.findOneAndUpdate(
             {
                 _id: req.params.id,
@@ -405,21 +444,52 @@ exports.updateNotice = async (req, res) => {
             }
         );
 
-        res.status(200).json({
-            success: true,
-            message: 'Notice updated successfully',
-            notice
-        });
+        // Notify residents only when the notice becomes published
+        const isNowPublished =
+            notice.status === 'published' &&
+            notice.publishAt <= new Date();
 
-    } catch (error) {
-        console.error('Update Notice Error:', error);
+        if (!wasPublished && isNowPublished) {
+            try {
+                const residents = await User.find({
+                    societyId: req.user.societyId,
+                    role: 'resident',
+                    approvalStatus: 'approved',
+                    isActive: true
+                }).select('_id');
 
-        res.status(500).json({
-            success: false,
-            message: 'Failed to update notice'
-        });
-    }
-};
+                if (residents.length > 0) {
+                    await createBulkNotifications({
+                        societyId: req.user.societyId,
+                        recipients: residents.map(resident => resident._id),
+                        title: 'New Society Notice',
+                        message: `A new notice has been published: ${notice.title}`,
+                        type: 'notice',
+                        relatedId: notice._id,
+                        relatedModel: 'Notice'
+                    });
+                }
+            } catch (notificationError) {
+                console.error('Notice Notification Error:', notificationError);
+            }
+        }
+                
+
+                res.status(200).json({
+                    success: true,
+                    message: 'Notice updated successfully',
+                    notice
+                });
+
+            } catch (error) {
+                console.error('Update Notice Error:', error);
+
+                res.status(500).json({
+                    success: false,
+                    message: 'Failed to update notice'
+                });
+            }
+        };
 
 
 // ==========================================

@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const Voting = require('../models/Voting');
 const Vote = require('../models/Vote');
+const User = require('../models/User');
+
+const {
+    createBulkNotifications
+} = require('../utils/notificationHelper');
 
 const validCategories = [
     'general',
@@ -124,6 +129,36 @@ exports.createVoting = async (req, res) => {
             showResults: showResults !== false
 
         });
+
+        // Notify residents when a poll becomes active
+        if (
+            voting.status === 'active' &&
+            voting.startDate <= new Date() &&
+            voting.endDate > new Date()
+        ) {
+            try {
+                const residents = await User.find({
+                    societyId: req.user.societyId,
+                    role: 'resident',
+                    approvalStatus: 'approved',
+                    isActive: true
+                }).select('_id');
+
+                if (residents.length > 0) {
+                    await createBulkNotifications({
+                        societyId: req.user.societyId,
+                        recipients: residents.map(resident => resident._id),
+                        title: 'New Voting Poll',
+                        message: `A new poll is available: ${voting.title}`,
+                        type: 'voting',
+                        relatedId: voting._id,
+                        relatedModel: 'Voting'
+                    });
+                }
+            } catch (notificationError) {
+                console.error('Voting Notification Error:', notificationError);
+            }
+        }
 
         res.status(201).json({
             success: true,
@@ -453,6 +488,11 @@ exports.updateVoting = async (req, res) => {
             societyId: req.user.societyId
         });
 
+        const wasActive =
+            voting.status === 'active' &&
+            voting.startDate <= new Date() &&
+            voting.endDate > new Date();
+
         if (!voting) {
             return res.status(404).json({
                 success: false,
@@ -562,6 +602,37 @@ exports.updateVoting = async (req, res) => {
         }
 
         await voting.save();
+
+        // Notify residents when a poll becomes active
+        const isNowActive =
+            voting.status === 'active' &&
+            voting.startDate <= new Date() &&
+            voting.endDate > new Date();
+
+        if (!wasActive && isNowActive) {
+            try {
+                const residents = await User.find({
+                    societyId: req.user.societyId,
+                    role: 'resident',
+                    approvalStatus: 'approved',
+                    isActive: true
+                }).select('_id');
+
+                if (residents.length > 0) {
+                    await createBulkNotifications({
+                        societyId: req.user.societyId,
+                        recipients: residents.map(resident => resident._id),
+                        title: 'New Voting Poll',
+                        message: `A new poll is available: ${voting.title}`,
+                        type: 'voting',
+                        relatedId: voting._id,
+                        relatedModel: 'Voting'
+                    });
+                }
+            } catch (notificationError) {
+                console.error('Voting Notification Error:', notificationError);
+            }
+        }
 
         res.status(200).json({
             success: true,
